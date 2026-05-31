@@ -1,0 +1,41 @@
+// Discover all Docker containers on the host
+discovery.docker "all" {
+    host = "unix:///var/run/docker.sock"
+}
+
+// Turn Docker metadata into useful labels
+discovery.relabel "all" {
+    targets = discovery.docker.all.targets
+
+    // Container name (strip the leading "/")
+    rule {
+        source_labels = ["__meta_docker_container_name"]
+        regex         = "/(.*)"
+        target_label  = "container"
+    }
+    // Compose project name
+    rule {
+        source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+        target_label  = "compose_project"
+    }
+    // Compose service name (nginx / app / mysql ...)
+    rule {
+        source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label  = "service"
+    }
+}
+
+// Collect container logs
+loki.source.docker "all" {
+    host       = "unix:///var/run/docker.sock"
+    targets    = discovery.relabel.all.output
+    labels     = { host = "dev" }
+    forward_to = [loki.write.default.receiver]
+}
+
+// Push to Loki
+loki.write "default" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}

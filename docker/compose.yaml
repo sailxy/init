@@ -9,8 +9,9 @@ services:
     container_name: netshoot
     restart: always
     command: ["sleep", "infinity"]
+
   nginx:
-    image: nginx
+    image: nginx:1.30
     container_name: nginx
     restart: always
     ports:
@@ -20,8 +21,9 @@ services:
       - /opt/apps/nginx/conf.d:/etc/nginx/conf.d
       - /opt/apps/nginx/nginx.conf:/etc/nginx/nginx.conf
       - /opt/apps/nginx/log:/var/log/nginx
+
   postgres:
-    image: postgres
+    image: postgres:18
     container_name: postgres
     restart: always
     ports:
@@ -29,9 +31,9 @@ services:
     environment:
       - POSTGRES_PASSWORD=postgres
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
   mysql:
-    image: mysql
+    image: mysql:8.4
     container_name: mysql
     restart: always
     ports:
@@ -42,7 +44,7 @@ services:
       - mysql-data:/var/lib/mysql
       - /opt/apps/mysql/conf.d:/etc/mysql/conf.d
   redis:
-    image: redis
+    image: redis:8.8
     container_name: redis
     restart: always
     ports:
@@ -50,7 +52,7 @@ services:
     volumes:
       - redis-data:/data
   rabbitmq:
-    image: rabbitmq:management
+    image: rabbitmq:4.3-management
     container_name: rabbitmq
     restart: always
     ports:
@@ -60,7 +62,7 @@ services:
       - RABBITMQ_DEFAULT_USER=admin
       - RABBITMQ_DEFAULT_PASS=admin
   asynq:
-    image: redis
+    image: redis:8.8
     container_name: asynq
     restart: always
     ports:
@@ -68,7 +70,7 @@ services:
     volumes:
       - asynq-data:/data
   asynqmon:
-    image: hibiken/asynqmon
+    image: hibiken/asynqmon:0.7.2
     container_name: asynqmon
     restart: always
     depends_on:
@@ -88,6 +90,36 @@ services:
       - "5778:5778"
       - "9411:9411"
 
+  loki:
+    image: grafana/loki:3.7.2
+    container_name: loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    ports: ["3100:3100"]
+    volumes:
+      - /opt/apps/loki/loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki-data:/loki
+  alloy:
+    image: grafana/alloy:v1.16.1
+    container_name: alloy
+    command: run /etc/alloy/config.alloy --server.http.listen-addr=0.0.0.0:12345
+    ports: ["12345:12345"]
+    volumes:
+      - /opt/apps/alloy/config.alloy:/etc/alloy/config.alloy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: [loki]
+  grafana:
+    image: grafana/grafana:13.0.1
+    container_name: grafana
+    ports: ["3000:3000"]
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - /opt/apps/grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    depends_on: [loki]
+
 networks:
   default:
     name: infra-network
@@ -98,3 +130,5 @@ volumes:
   mysql-data:
   redis-data:
   asynq-data:
+  loki-data:
+  grafana-data:
