@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker network create -d bridge common-net
+docker network create -d bridge infra-network
