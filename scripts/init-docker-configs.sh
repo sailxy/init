@@ -3,7 +3,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 docker_dir="$repo_root/docker"
-app_root="${APP_ROOT:-/opt/apps}"
+app_root="${APP_ROOT:-$HOME/apps}"
 
 copy_file() {
   local src="$1"
